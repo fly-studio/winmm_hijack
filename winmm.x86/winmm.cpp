@@ -8,7 +8,7 @@
 #include <Strsafe.h>
 #include <string>
 #include <fstream>
-#include <iostream>
+#include <filesystem>
 
 
 #define EXTERNC extern "C"
@@ -1587,17 +1587,53 @@ VOID WINAPI NsInitDllExportProc()
     pfNsUnknowProc_2 = NsGetSourceAddressUnCheckResult( MAKEINTRESOURCEA(2) );
 }
 
-bool fileExists(const std::string& filename) {
-    std::ifstream file(filename);
-    return file.good();
+std::filesystem::path GetCurrentDir()
+{
+    HMODULE hModule = GetModuleHandle(NULL); // 获取调用者的模块句柄
+    char pathBuffer[MAX_PATH];
+    // 获取包含文件名的完整路径
+    if (GetModuleFileNameA(hModule, pathBuffer, MAX_PATH) == 0) {
+        return {};
+    }
+
+    // 获取dir
+    return std::filesystem::path(pathBuffer).parent_path();
 }
 
-std::wstring StringToWString(const std::string& str) {
-    // 计算所需的宽字符数（包括空字符）
-    int sizeNeeded = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, NULL, 0);
-    std::wstring wstr(sizeNeeded, 0);
-    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, &wstr[0], sizeNeeded);
-    return wstr;
+void LoadInjectDlls() {
+    std::filesystem::path currentDir = GetCurrentDir();
+
+    std::filesystem::path filename = currentDir / "inject.txt";
+    // 检查文件是否存在
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        OutputDebugString(L"inject.txt does not exist.");
+        return;
+    }
+
+    OutputDebugString(L"read inject.txt.");
+    std::string line;
+    // 逐行读取文件
+    while (std::getline(file, line)) {
+        // 去除空白字符
+        line.erase(std::remove_if(line.begin(), line.end(), isspace), line.end());
+        // 检查文件名是否以.dll结尾
+        if (!line.empty() && line.size() > 4 && line.substr(line.size() - 4) == ".dll") {
+            std::filesystem::path dllPath(line);
+            // 如果不是绝对路径，就在当前路径下查找
+            if (!dllPath.is_absolute()) {
+                dllPath = currentDir / dllPath;
+            }
+            OutputDebugString((L"try to load dll: " + dllPath.wstring()).c_str());
+
+            if (std::filesystem::exists(dllPath)) {
+                HMODULE hModule = LoadLibrary(dllPath.wstring().c_str());
+                if (hModule) {
+                    OutputDebugString((L"loaded dll: " + dllPath.wstring()).c_str());
+                }
+            }
+        }
+    }
 }
 
 BOOL NsLoad()
@@ -1611,29 +1647,7 @@ BOOL NsLoad()
     NsInitDllExportProc();
 
 
-    std::string filename = "./inject.txt";
-    // 检查文件是否存在
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "inject.txt does not exist." << std::endl;
-        return TRUE;
-    }
-    std::string line;
-    // 逐行读取文件
-    while (std::getline(file, line)) {
-        // 去除空白字符
-        line.erase(std::remove_if(line.begin(), line.end(), isspace), line.end());
-        // 检查文件名是否以.dll结尾
-        if (!line.empty() && line.size() > 4 && line.substr(line.size() - 4) == ".dll") {
-            if (fileExists(line)) {
-                std::wstring dllPath = StringToWString(line);
-                HMODULE hModule = LoadLibraryW(dllPath.c_str());
-                if (hModule) {
-                    std::cout << "loaded dll: " << line << std::endl;
-                }
-            }
-        }
-    }
+    LoadInjectDlls();
 
     
     return TRUE;
