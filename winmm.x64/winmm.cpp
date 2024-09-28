@@ -1,11 +1,14 @@
 #include <windows.h>
-#include <fstream>
-#include <filesystem>
+#include <vector>
 #include <tchar.h>
+#include <algorithm>
+#include <string>
+
 #include "NsHiJack.h"
 
+using tstring = std::basic_string<TCHAR, std::char_traits<TCHAR>, std::allocator<TCHAR>>;
 
-std::filesystem::path GetCurrentDllDir(HMODULE hModule = NULL)
+static tstring GetCurrentDllDir(HMODULE hModule = NULL)
 {
     if (NULL == hModule) {
         hModule = GetModuleHandle(NULL); // 获取调用者的模块句柄
@@ -16,46 +19,59 @@ std::filesystem::path GetCurrentDllDir(HMODULE hModule = NULL)
         return {};
     }
 
-    // 获取dir
-    return std::filesystem::path(pathBuffer).parent_path();
+    // 查找最后一个反斜杠的位置
+    TCHAR* lastSlash = _tcsrchr(pathBuffer, _T('\\'));
+    if (lastSlash == NULL) {
+        return _T("");
+    }
+    *lastSlash = '\0';
+
+    return tstring(pathBuffer);
 }
 
-void LoadInjectDlls(HMODULE hModule = NULL) {
-    std::filesystem::path currentDir = GetCurrentDllDir();
+static void LoadInjectDlls(HMODULE hModule = NULL) {
+    TCHAR output[1024];
 
-    std::filesystem::path filename = currentDir / "inject.txt";
-    // 检查文件是否存在
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        OutputDebugString(L"inject.txt does not exist, skip inject.");
+    tstring currentDir = GetCurrentDllDir();
+
+    // 构造目录搜索模式
+    tstring searchPattern = currentDir + _T("\\winmm.*.dll");
+    // 开始搜索
+    WIN32_FIND_DATA findData;
+    HANDLE hFind = FindFirstFile(searchPattern.c_str(), &findData);
+    // 没有搜索到文件
+    if (hFind == INVALID_HANDLE_VALUE) {
+        OutputDebugString(_T("Found nothing for injection"));
         return;
     }
 
-    OutputDebugString(TEXT("read inject.txt."));
-    TCHAR output[1024];
-    std::string line;
-    // 逐行读取文件
-    while (std::getline(file, line)) {
-        // 去除空白字符
-        line.erase(std::remove_if(line.begin(), line.end(), isspace), line.end());
-        // 检查文件名是否以.dll结尾
-        if (!line.empty() && line.size() > 4 && line.substr(line.size() - 4) == ".dll") {
-            std::filesystem::path dllPath(line);
-            // 如果不是绝对路径，就在当前路径下查找
-            if (!dllPath.is_absolute()) {
-                dllPath = currentDir / dllPath;
-            }
-            _stprintf_s(output, _countof(output), TEXT("try to load dll: %s"), dllPath.c_str());
-            OutputDebugString(output);
+    // 遍历搜索结果
+    std::vector<tstring> fileList;
+    do {
+        // 添加到列表中
+        fileList.push_back(findData.cFileName);
+    } while (FindNextFile(hFind, &findData));
 
-            if (std::filesystem::exists(dllPath)) {
-                HMODULE hModule = LoadLibrary(dllPath.c_str());
-                if (hModule) {
-                    _stprintf_s(output, _countof(output), TEXT("injected dll: %s"), dllPath.c_str());
-                    OutputDebugString(output);
-                }
-            }
+    // 关闭句柄
+    FindClose(hFind);
+
+    // 对文件列表进行字典顺序排序
+    std::sort(fileList.begin(), fileList.end());
+
+    _stprintf_s(output, _countof(output), TEXT("Found %I64u dlls for injection."), fileList.size());
+    OutputDebugString(output);
+
+    // LoadLibrary排序后的文件列表
+    for (const auto& dllPath : fileList) {
+        _stprintf_s(output, _countof(output), TEXT("Try to load dll: %s"), dllPath.c_str());
+        OutputDebugString(output);
+
+        HMODULE hModule = LoadLibrary(dllPath.c_str());
+        if (hModule) {
+            _stprintf_s(output, _countof(output), TEXT("Injected dll: %s"), dllPath.c_str());
+            OutputDebugString(output);
         }
+        
     }
 }
 
@@ -73,6 +89,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
 			LoadInjectDlls(hModule);
 		}
+        break;
 	case DLL_THREAD_ATTACH:
 	case DLL_THREAD_DETACH:
 	case DLL_PROCESS_DETACH:
