@@ -1,15 +1,18 @@
 #include <windows.h>
 #include <fstream>
 #include <filesystem>
+#include <tchar.h>
 #include "NsHiJack.h"
 
 
-std::filesystem::path GetCurrentDir()
+std::filesystem::path GetCurrentDllDir(HMODULE hModule = NULL)
 {
-    HMODULE hModule = GetModuleHandle(NULL); // 获取调用者的模块句柄
-    char pathBuffer[MAX_PATH];
+    if (NULL == hModule) {
+        hModule = GetModuleHandle(NULL); // 获取调用者的模块句柄
+    }
+    TCHAR pathBuffer[MAX_PATH] = { 0 };
     // 获取包含文件名的完整路径
-    if (GetModuleFileNameA(hModule, pathBuffer, MAX_PATH) == 0) {
+    if (GetModuleFileName(hModule, pathBuffer, MAX_PATH) == 0) {
         return {};
     }
 
@@ -17,18 +20,19 @@ std::filesystem::path GetCurrentDir()
     return std::filesystem::path(pathBuffer).parent_path();
 }
 
-void LoadInjectDlls() {
-    std::filesystem::path currentDir = GetCurrentDir();
+void LoadInjectDlls(HMODULE hModule = NULL) {
+    std::filesystem::path currentDir = GetCurrentDllDir();
 
     std::filesystem::path filename = currentDir / "inject.txt";
     // 检查文件是否存在
     std::ifstream file(filename);
     if (!file.is_open()) {
-        OutputDebugString(L"inject.txt does not exist.");
+        OutputDebugString(L"inject.txt does not exist, skip inject.");
         return;
     }
 
-    OutputDebugString(L"read inject.txt.");
+    OutputDebugString(TEXT("read inject.txt."));
+    TCHAR output[1024];
     std::string line;
     // 逐行读取文件
     while (std::getline(file, line)) {
@@ -41,12 +45,14 @@ void LoadInjectDlls() {
             if (!dllPath.is_absolute()) {
                 dllPath = currentDir / dllPath;
             }
-            OutputDebugString((L"try to load dll: " + dllPath.wstring()).c_str());
+            _stprintf_s(output, _countof(output), TEXT("try to load dll: %s"), dllPath.c_str());
+            OutputDebugString(output);
 
             if (std::filesystem::exists(dllPath)) {
-                HMODULE hModule = LoadLibrary(dllPath.wstring().c_str());
+                HMODULE hModule = LoadLibrary(dllPath.c_str());
                 if (hModule) {
-                    OutputDebugString((L"loaded dll: " + dllPath.wstring()).c_str());
+                    _stprintf_s(output, _countof(output), TEXT("injected dll: %s"), dllPath.c_str());
+                    OutputDebugString(output);
                 }
             }
         }
@@ -65,7 +71,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 			if (!NsInitDll())
 				return false;
 
-			LoadInjectDlls();
+			LoadInjectDlls(hModule);
 		}
 	case DLL_THREAD_ATTACH:
 	case DLL_THREAD_DETACH:
