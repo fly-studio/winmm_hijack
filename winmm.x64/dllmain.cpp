@@ -1,8 +1,8 @@
 #include <windows.h>
 #include "NsHiJack.h"
 #include "../hook/inject.h"
-#pragma comment(lib, "hook.lib")
 
+std::vector<DllInfo> g_InjectDlls{};
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -16,12 +16,15 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 			if (!NsInitDll())
 				return false;
 
-			LoadInjectDlls(hModule);
+			g_InjectDlls = LoadInjectDlls(hModule);
 		}
         break;
 	case DLL_THREAD_ATTACH:
 	case DLL_THREAD_DETACH:
 	case DLL_PROCESS_DETACH:
+		{
+			UnloadInjectDlls(g_InjectDlls);
+		}
 		break;
 	}
 	return TRUE;

@@ -21,7 +21,6 @@
 
 #define HIJACK_DLLNAME L"\\winmm.dll"
 HMODULE g_hSourceModule = NULL;
-HMODULE g_hCurrentModule = NULL;
 
 
 PVOID pfCloseDriver = NULL;
@@ -1598,29 +1597,4 @@ BOOL NsLoad()
     return TRUE;
 }
 
-
-BOOL APIENTRY DllMain( HMODULE hModule,
-                      DWORD  ul_reason_for_call,
-                      LPVOID lpReserved
-                      )
-{
-    switch (ul_reason_for_call)
-    {
-    case DLL_PROCESS_ATTACH:
-        {
-            g_hCurrentModule = hModule;
-            DisableThreadLibraryCalls(hModule);
-            if ( !NsLoad() )
-                return FALSE;
-
-            LoadInjectDlls(hModule);
-        }
-        break;
-    case DLL_THREAD_ATTACH:
-    case DLL_THREAD_DETACH:
-    case DLL_PROCESS_DETACH:
-        break;
-    }
-    return TRUE;
-}
 
