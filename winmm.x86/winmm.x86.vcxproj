@@ -96,6 +96,11 @@
   <ItemGroup>
     <ResourceCompile Include="winmm.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\hook\hook.vcxproj">
+      <Project>{a6e9f7b2-891a-49dd-b556-848477f1d3e1}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
