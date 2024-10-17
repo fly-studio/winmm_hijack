@@ -1,3 +1,4 @@
 EXPORTS
-hook @195
-unhook @196
+hookTransaction @195
+hook @196
+unhook @197

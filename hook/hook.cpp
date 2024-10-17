@@ -3,18 +3,23 @@
 #include "hook.h"
 
 
-bool hook(PVOID* originalFunc, PVOID hookFunc)
+long hook(PVOID* originalFunc, PVOID hookFunc)
 {
-    DetourTransactionBegin();
-    DetourUpdateThread(GetCurrentThread());
-    DetourAttach(originalFunc, hookFunc);
-    return DetourTransactionCommit() != 0;
+    return DetourAttach(originalFunc, hookFunc);
 }
 
-bool unhook(PVOID* originalFunc, PVOID hookFunc)
+long unhook(PVOID* originalFunc, PVOID hookFunc)
 {
+    return DetourDetach(originalFunc, hookFunc);
+}
+
+bool hookTransaction(HANDLE threadHandle, void(*callback)(void))
+{
+    if (NULL == threadHandle) {
+        threadHandle = GetCurrentThread();
+    }
     DetourTransactionBegin();
-    DetourUpdateThread(GetCurrentThread());
-    DetourDetach(originalFunc, hookFunc);
+    DetourUpdateThread(threadHandle);
+    callback();
     return DetourTransactionCommit() != 0;
 }

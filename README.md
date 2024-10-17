@@ -55,8 +55,9 @@
 winmm.dll中已经导出了2个方法：
 
 ```
-__declspec(dllexport) bool hook(PVOID* originalFunc, PVOID hookFunc);
-__declspec(dllexport) bool unhook(PVOID* originalFunc, PVOID hookFunc);
+__declspec(dllexport) long hook(PVOID* originalFunc, PVOID hookFunc);
+__declspec(dllexport) long unhook(PVOID* originalFunc, PVOID hookFunc);
+__declspec(dllexport) bool hookTransaction(HANDLE threadHandle, void (*callback)(void));
 ```
 
 
@@ -67,24 +68,13 @@ __declspec(dllexport) bool unhook(PVOID* originalFunc, PVOID hookFunc);
 #include <Windows.h>
 
 // 直接导入就可以使用
-__declspec(dllimport) bool hook(PVOID* originalFunc, PVOID hookFunc);
-__declspec(dllimport) bool unhook(PVOID* originalFunc, PVOID hookFunc);
-
-
-// 原始 CreateFileW 函数的类型定义
-typedef HANDLE(WINAPI* CREATEFILEW)(
-    LPCWSTR lpFileName,
-    DWORD dwDesiredAccess,
-    DWORD dwShareMode,
-    LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-    DWORD dwCreationDisposition,
-    DWORD dwFlagsAndAttributes,
-    HANDLE hTemplateFile
-    );
+__declspec(dllimport) long hook(PVOID* originalFunc, PVOID hookFunc);
+__declspec(dllimport) long unhook(PVOID* originalFunc, PVOID hookFunc);
+__declspec(dllimport) bool hookTransaction(HANDLE threadHandle, void (*callback)(void));
 
 
 // 原始 CreateFileW 函数的指针
-CREATEFILEW RealCreateFileW = CreateFileW;
+auto RealCreateFileW = CreateFileW;
 
 // 钩子函数
 static HANDLE WINAPI HookedCreateFileW(
@@ -117,7 +107,14 @@ static HANDLE WINAPI HookedCreateFileW(
 
 // 调用钩子
 void run() {
-    hook(&(PVOID&)RealCreateFileW, (PVOID)HookCreateFileW);
+    HMODULE hModule = GetModuleHandle("winmm.dll");
+    if (nullptr == hModule) { // 当前dll并不是被winmm.dll加载的
+        return;
+    }
+
+    hookTransaction(NULL, [](){
+        hook(&(PVOID&)RealCreateFileW, (PVOID)HookCreateFileW);
+    })
 }
 
 ```
