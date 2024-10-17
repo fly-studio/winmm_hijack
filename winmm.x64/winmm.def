@@ -180,3 +180,5 @@ waveOutSetVolume = Hijack64_waveOutSetVolume @180
 waveOutUnprepareHeader = Hijack64_waveOutUnprepareHeader @181
 waveOutWrite = Hijack64_waveOutWrite @182
 NsUnknowProc_2 = Hijack64_NsUnknowProc_2 @2 NONAME
+hook @183
+unhook @184

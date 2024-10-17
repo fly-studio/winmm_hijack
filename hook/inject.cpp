@@ -1,32 +1,18 @@
 #include "inject.h"
 #include <algorithm>
 #include <regex>
-#include "hook.h"
 #include "utils.h"
 #include <tchar.h>
 
-namespace fs = std::filesystem;
 
-static std::vector<HookFunc> tryGetHookFuncList(HMODULE hModule)
-{
-    typedef std::vector<HookFunc>(*PFnHookFuncList)();
-    auto fn = (PFnHookFuncList)GetProcAddress(hModule, "GetHookFuncList");
-    if (NULL != fn) {
-        auto hookList = fn();
-        return hookList;
-    }
-    return {};
-}
-
-
-std::vector<DllInfo> LoadInjectDlls(HMODULE hModule) {
+std::vector<HMODULE> LoadInjectDlls(HMODULE hModule) {
     TCHAR output[2048];
 
-    fs::path dllPath = GetCurrentDllPath(hModule);
-    std::vector<fs::path> dllList;
+    std::filesystem::path dllPath = GetCurrentDllPath(hModule);
+    std::vector<std::filesystem::path> dllList;
 
     std::basic_regex<TCHAR> pattern(_T("^winmm\\..+\\.dll$"));
-    for (const auto& entry : fs::directory_iterator(dllPath.parent_path())) {
+    for (const auto& entry : std::filesystem::directory_iterator(dllPath.parent_path())) {
         if (entry.is_regular_file()){
             auto filename = entry.path().filename();
             if (std::regex_match(filename.c_str(), pattern)) {
@@ -47,7 +33,8 @@ std::vector<DllInfo> LoadInjectDlls(HMODULE hModule) {
     _stprintf_s(output, _countof(output), _T("Found %zu dlls for injection."), dllList.size());
     OutputDebugString(output);
 
-    std::vector<DllInfo> dllInfoList{};
+    std::vector<HMODULE> dllModuleList;
+
     // LoadLibrary排序后的文件列表
     for (const auto& dllPath : dllList) {
         _stprintf_s(output, _countof(output), _T("Try to load dll: %s"), dllPath.c_str());
@@ -58,24 +45,16 @@ std::vector<DllInfo> LoadInjectDlls(HMODULE hModule) {
             _stprintf_s(output, _countof(output), _T("Injected dll: %s"), dllPath.c_str());
             OutputDebugString(output);
 
-            // hook functions
-            auto hookFuncList = tryGetHookFuncList(hModule);
-            if (!hook(hookFuncList)) {
-                _stprintf_s(output, _countof(output), _T("Failed to hook, dll: %s"), dllPath.c_str());
-                OutputDebugString(output);
-            }
 
-
-            dllInfoList.push_back({ hModule, hookFuncList });
+            dllModuleList.push_back(hModule);
         }
     }
-    return dllInfoList;
+    return dllModuleList;
 }
 
-void UnloadInjectDlls(const std::vector<DllInfo>& dllList)
+void UnloadInjectDlls(const std::vector<HMODULE>& dllModuleList)
 {
-    for (auto& dll : dllList) {
-        unhook(dll.hooks);
-        FreeLibrary(dll.hModule);
+    for (auto& hModule : dllModuleList) {
+        FreeLibrary(hModule);
     }
 }

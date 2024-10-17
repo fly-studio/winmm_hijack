@@ -23,7 +23,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="winmm.cpp">
+    <ClCompile Include="dllmain.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -36,5 +36,10 @@
     <MASM Include="NsHiJack.asm">
       <Filter>源文件</Filter>
     </MASM>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="winmm.def">
+      <Filter>源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>

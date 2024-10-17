@@ -2,7 +2,7 @@
 #include "NsHiJack.h"
 #include "../hook/inject.h"
 
-std::vector<DllInfo> g_InjectDlls{};
+std::vector<HMODULE> g_InjectDlls{};
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,

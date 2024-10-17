@@ -1,11 +1,15 @@
 #pragma once
-#include <vector>
 #include <wtypes.h>
+#include "library.h"
 
-struct HookFunc {
-	PVOID* pFunc;
-	PVOID pHook;
-};
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-BOOL hook(const std::vector<HookFunc>& funcList);
-BOOL unhook(const std::vector<HookFunc>& funcList);
+DLL_API bool hook(PVOID* originalFunc, PVOID hookFunc);
+DLL_API bool unhook(PVOID* originalFunc, PVOID hookFunc);
+
+
+#ifdef __cplusplus
+}
+#endif

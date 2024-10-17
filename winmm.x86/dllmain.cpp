@@ -1,8 +1,10 @@
 #include "../hook/inject.h"
 #include "winmm.h"
 
-std::vector<DllInfo> g_InjectDlls{};
 
+
+
+std::vector<HMODULE> g_InjectDlls{};
 HMODULE g_hCurrentModule = NULL;
 
 

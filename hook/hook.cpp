@@ -1,26 +1,20 @@
 ﻿
-#include "hook.h"
 #include "detours.h"
+#include "hook.h"
 
 
-BOOL hook(const std::vector<HookFunc> &funcList)
+bool hook(PVOID* originalFunc, PVOID hookFunc)
 {
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
-    for (auto &fn : funcList)
-    {
-        DetourAttach(fn.pFunc, fn.pHook);
-    }
+    DetourAttach(originalFunc, hookFunc);
     return DetourTransactionCommit() != 0;
 }
 
-BOOL unhook(const std::vector<HookFunc>& funcList)
+bool unhook(PVOID* originalFunc, PVOID hookFunc)
 {
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
-    for (auto &fn : funcList)
-    {
-        DetourDetach(fn.pFunc, fn.pHook);
-    }
+    DetourDetach(originalFunc, hookFunc);
     return DetourTransactionCommit() != 0;
 }
