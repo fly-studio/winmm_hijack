@@ -52,12 +52,12 @@
 
 如果使用mingw或其它语言实现的dll，或者编译Detours有点困难，但是你又想hook一些windows的api函数，比如：`CreateFileW`
 
-winmm.dll中已经导出了2个方法：
+winmm.dll中已经导出了3个方法：
 
 ```
-__declspec(dllexport) long hook(PVOID* originalFunc, PVOID hookFunc);
-__declspec(dllexport) long unhook(PVOID* originalFunc, PVOID hookFunc);
-__declspec(dllexport) bool hookTransaction(HANDLE threadHandle, void (*callback)(void));
+long hook(PVOID* originalFunc, PVOID hookFunc);
+long unhook(PVOID* originalFunc, PVOID hookFunc);
+bool hookTransaction(HANDLE threadHandle, void (*callback)(void));
 ```
 
 
@@ -67,10 +67,11 @@ __declspec(dllexport) bool hookTransaction(HANDLE threadHandle, void (*callback)
 ```cpp
 #include <Windows.h>
 
-// 直接导入就可以使用
-__declspec(dllimport) long hook(PVOID* originalFunc, PVOID hookFunc);
-__declspec(dllimport) long unhook(PVOID* originalFunc, PVOID hookFunc);
-__declspec(dllimport) bool hookTransaction(HANDLE threadHandle, void (*callback)(void));
+// 申明父级winmm.dll的函数
+#define BindDllMethod(funcPtr, dllHandle, funcName) (funcPtr = (decltype(funcPtr))GetProcAddress(dllHandle, funcName))
+bool (*hookTransaction)(HANDLE threadHandle, void (*callback)(void)) = nullptr;
+long (*hook)(PVOID* originalFunc, PVOID hookFunc) = nullptr;
+long (*unhook)(PVOID* originalFunc, PVOID hookFunc) = nullptr;
 
 
 // 原始 CreateFileW 函数的指针
@@ -105,16 +106,22 @@ static HANDLE WINAPI HookedCreateFileW(
     return hFile;
 }
 
-// 调用钩子
 void run() {
     HMODULE hModule = GetModuleHandle("winmm.dll");
-    if (nullptr == hModule) { // 当前dll并不是被winmm.dll加载的
+    if (nullptr == hModule) { // 当前dll不是被 winmm.dll 加载的，无法hook
         return;
     }
+    // 绑定
+    BindDllMethod(hookTransaction, hModule, "hookTransaction");
+    BindDllMethod(hook, hModule, "hook");
+    BindDllMethod(unhook, hModule, "unhook");
 
     hookTransaction(NULL, [](){
         hook(&(PVOID&)RealCreateFileW, (PVOID)HookCreateFileW);
+        // ...
     })
 }
+
+#undef BindDllMethod // 避免影响其他模块
 
 ```

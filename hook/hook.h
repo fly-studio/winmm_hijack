@@ -21,12 +21,12 @@ extern "C" {
  * });
  * @endcode
  */
-DLL_API bool hookTransaction(HANDLE threadHandle, void (*callback)(void));
+bool hookTransaction(HANDLE threadHandle, void (*callback)(void));
 
 // 勾住函数，必须在hookTransaction中执行
-DLL_API long hook(PVOID* originalFunc, PVOID hookFunc);
+long hook(PVOID* originalFunc, PVOID hookFunc);
 // 解除勾住函数，必须在hookTransaction中执行
-DLL_API long unhook(PVOID* originalFunc, PVOID hookFunc);
+long unhook(PVOID* originalFunc, PVOID hookFunc);
 
 #ifdef __cplusplus
 }
