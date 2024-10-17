@@ -12,7 +12,7 @@ extern "C" {
  * 
  * @param threadHandle 线程句柄，传入NULL表示当前线程
  * @param callback 可以在回调中执行hook、unhook
- * @return 是否执行成功
+ * @return 执行结果, 0: NO_ERROR
  * 
  * @code
  * hookTransaction(NULL, [](){
@@ -21,7 +21,7 @@ extern "C" {
  * });
  * @endcode
  */
-bool hookTransaction(HANDLE threadHandle, void (*callback)(void));
+long hookTransaction(HANDLE threadHandle, void (*callback)(void));
 
 // 勾住函数，必须在hookTransaction中执行
 long hook(PVOID* originalFunc, PVOID hookFunc);

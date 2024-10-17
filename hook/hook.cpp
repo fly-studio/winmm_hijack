@@ -13,7 +13,7 @@ long unhook(PVOID* originalFunc, PVOID hookFunc)
     return DetourDetach(originalFunc, hookFunc);
 }
 
-bool hookTransaction(HANDLE threadHandle, void(*callback)(void))
+long hookTransaction(HANDLE threadHandle, void(*callback)(void))
 {
     if (NULL == threadHandle) {
         threadHandle = GetCurrentThread();
@@ -21,5 +21,5 @@ bool hookTransaction(HANDLE threadHandle, void(*callback)(void))
     DetourTransactionBegin();
     DetourUpdateThread(threadHandle);
     callback();
-    return DetourTransactionCommit() != 0;
+    return DetourTransactionCommit();
 }

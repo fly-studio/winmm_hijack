@@ -57,7 +57,7 @@ winmm.dll中已经导出了3个方法：
 ```
 long hook(PVOID* originalFunc, PVOID hookFunc);
 long unhook(PVOID* originalFunc, PVOID hookFunc);
-bool hookTransaction(HANDLE threadHandle, void (*callback)(void));
+long hookTransaction(HANDLE threadHandle, void (*callback)(void));
 ```
 
 
@@ -69,7 +69,7 @@ bool hookTransaction(HANDLE threadHandle, void (*callback)(void));
 
 // 申明父级winmm.dll的函数
 #define BindDllMethod(funcPtr, dllHandle, funcName) (funcPtr = (decltype(funcPtr))GetProcAddress(dllHandle, funcName))
-bool (*hookTransaction)(HANDLE threadHandle, void (*callback)(void)) = nullptr;
+long (*hookTransaction)(HANDLE threadHandle, void (*callback)(void)) = nullptr;
 long (*hook)(PVOID* originalFunc, PVOID hookFunc) = nullptr;
 long (*unhook)(PVOID* originalFunc, PVOID hookFunc) = nullptr;
 
