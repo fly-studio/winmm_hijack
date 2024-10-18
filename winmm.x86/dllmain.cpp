@@ -15,23 +15,25 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 {
     switch (ul_reason_for_call)
     {
-    case DLL_PROCESS_ATTACH:
-    {
-        g_hCurrentModule = hModule;
-        DisableThreadLibraryCalls(hModule);
-        if (!NsLoad())
-            return FALSE;
+        case DLL_PROCESS_ATTACH:
+        {
+            g_hCurrentModule = hModule;
+            DisableThreadLibraryCalls(hModule);
+            if (!NsLoad())
+                return FALSE;
 
-        g_InjectDlls = LoadInjectDlls(hModule);
-    }
-    break;
-    case DLL_THREAD_ATTACH:
-    case DLL_THREAD_DETACH:
-    case DLL_PROCESS_DETACH:
-    {
-        UnloadInjectDlls(g_InjectDlls);
-    }
-    break;
+            g_InjectDlls = LoadInjectDlls(hModule);
+        }
+            break;
+        case DLL_THREAD_ATTACH:
+            break;
+        case DLL_THREAD_DETACH:
+            break;
+        case DLL_PROCESS_DETACH:
+        {
+            UnloadInjectDlls(g_InjectDlls);
+        }
+            break;
     }
     return TRUE;
 }

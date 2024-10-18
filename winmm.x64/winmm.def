@@ -180,6 +180,39 @@ waveOutSetVolume = Hijack64_waveOutSetVolume @180
 waveOutUnprepareHeader = Hijack64_waveOutUnprepareHeader @181
 waveOutWrite = Hijack64_waveOutWrite @182
 NsUnknowProc_2 = Hijack64_NsUnknowProc_2 @2 NONAME
-hookTransaction @183
-hook @184
-unhook @185
+DetourTransactionBegin
+DetourTransactionCommit
+DetourTransactionAbort
+DetourUpdateThread
+DetourAttach
+DetourAttachEx
+DetourDetach
+DetourCreateProcessWithDllExA
+DetourCreateProcessWithDllExW
+DetourCreateProcessWithDllsA
+DetourCreateProcessWithDllsW
+DetourRestoreAfterWith
+DetourFinishHelperProcess
+DetourBinaryOpen
+DetourBinaryClose
+DetourBinaryWrite
+DetourBinaryResetImports
+DetourBinaryEditImports
+DetourAllocateRegionWithinJumpBounds
+DetourCopyInstruction
+DetourSetCodeModule
+DetourSetIgnoreTooSmall
+DetourSetRetainRegions
+DetourSetSystemRegionLowerBound
+DetourSetSystemRegionUpperBound
+DetourGetEntryPoint
+DetourGetModuleSize
+DetourEnumerateModules
+DetourGetSizeOfPayloads
+DetourEnumerateImports
+DetourEnumerateExports
+DetourFindPayload
+DetourGetContainingModule
+hookTransaction
+hook
+unhook

@@ -1,4 +1,37 @@
 EXPORTS
-hookTransaction @195
-hook @196
-unhook @197
+DetourTransactionBegin
+DetourTransactionCommit
+DetourTransactionAbort
+DetourUpdateThread
+DetourAttach
+DetourAttachEx
+DetourDetach
+DetourCreateProcessWithDllExA
+DetourCreateProcessWithDllExW
+DetourCreateProcessWithDllsA
+DetourCreateProcessWithDllsW
+DetourRestoreAfterWith
+DetourFinishHelperProcess
+DetourBinaryOpen
+DetourBinaryClose
+DetourBinaryWrite
+DetourBinaryResetImports
+DetourBinaryEditImports
+DetourAllocateRegionWithinJumpBounds
+DetourCopyInstruction
+DetourSetCodeModule
+DetourSetIgnoreTooSmall
+DetourSetRetainRegions
+DetourSetSystemRegionLowerBound
+DetourSetSystemRegionUpperBound
+DetourGetEntryPoint
+DetourGetModuleSize
+DetourEnumerateModules
+DetourGetSizeOfPayloads
+DetourEnumerateImports
+DetourEnumerateExports
+DetourFindPayload
+DetourGetContainingModule
+hookTransaction
+hook
+unhook

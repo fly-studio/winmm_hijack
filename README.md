@@ -48,20 +48,67 @@
     - x86的只会生成一个.cpp
     - x64的会生成.cpp、.asm，导出的函数的代码实际上位于.asm
 
-## Hook 系统函数
+## 导出的方法
 
-如果使用mingw或其它语言实现的dll，或者编译Detours有点困难，但是你又想hook一些windows的api函数，比如：`CreateFileW`
+winmm.dll中导出了3个简单的hook方法：
 
-winmm.dll中已经导出了3个方法：
-
-```
+```cpp
 long hook(PVOID* originalFunc, PVOID hookFunc);
 long unhook(PVOID* originalFunc, PVOID hookFunc);
 long hookTransaction(HANDLE threadHandle, void (*callback)(void));
 ```
 
+除此之外，还导出了Detours的所有方法：
 
-则在你的dll的项目中实现如下代码：
+```cpp
+LONG WINAPI DetourTransactionBegin(VOID);
+LONG WINAPI DetourTransactionCommit(VOID);
+LONG WINAPI DetourTransactionAbort(VOID);
+LONG WINAPI DetourUpdateThread(HANDLE hThread);
+LONG WINAPI DetourAttach(PVOID *ppPointer, PVOID pDetour);
+LONG WINAPI DetourAttachEx(PVOID *ppPointer, PVOID pDetour, PDETOUR_TRAMPOLINE *ppRealTrampoline, PVOID *ppRealTarget, PVOID *ppRealDetour);
+LONG WINAPI DetourDetach(PVOID *ppPointer, PVOID pDetour);
+
+BOOL WINAPI DetourCreateProcessWithDllExA(LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation, LPCSTR lpDllName, PDETOUR_CREATE_PROCESS_ROUTINEA pfCreateProcessA);
+BOOL WINAPI DetourCreateProcessWithDllExW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation, LPCSTR lpDllName, PDETOUR_CREATE_PROCESS_ROUTINEW pfCreateProcessW);
+
+BOOL WINAPI DetourCreateProcessWithDllsA(LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation, DWORD nDlls, LPCSTR *rlpDlls, PDETOUR_CREATE_PROCESS_ROUTINEA pfCreateProcessA);
+BOOL WINAPI DetourCreateProcessWithDllsW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation, DWORD nDlls, LPCSTR *rlpDlls, PDETOUR_CREATE_PROCESS_ROUTINEW pfCreateProcessW);
+
+BOOL WINAPI DetourRestoreAfterWith(VOID);
+BOOL WINAPI DetourFinishHelperProcess(HANDLE hProcess, DWORD dwProcessId, BOOL fFinishedProcess);
+
+PVOID WINAPI DetourBinaryOpen(HANDLE hFile);
+VOID WINAPI DetourBinaryClose(PVOID pBinary);
+BOOL WINAPI DetourBinaryWrite(HANDLE hFile, PVOID pBinary);
+BOOL WINAPI DetourBinaryResetImports(PVOID pBinary);
+BOOL WINAPI DetourBinaryEditImports(PVOID pBinary, PVOID pContext, PF_DETOUR_BINARY_BYWAY_CALLBACK pfByway, PF_DETOUR_BINARY_FILE_CALLBACK pfFile, PF_DETOUR_BINARY_SYMBOL_CALLBACK pfSymbol, PF_DETOUR_BINARY_COMMIT_CALLBACK pfCommit);
+
+PVOID WINAPI DetourAllocateRegionWithinJumpBounds(PVOID pbTarget, LONG cbAllocate);
+PVOID WINAPI DetourCopyInstruction(PVOID pDst, PVOID *ppDstPool, PVOID pSrc, PVOID *ppTarget, LONG *plExtra);
+
+BOOL WINAPI DetourSetCodeModule(HMODULE hModule, BOOL fLimitReferencesToModule);
+BOOL WINAPI DetourSetIgnoreTooSmall(BOOL fIgnore);
+BOOL WINAPI DetourSetRetainRegions(BOOL fRetain);
+BOOL WINAPI DetourSetSystemRegionLowerBound(PVOID pSystemRegionLowerBound);
+BOOL WINAPI DetourSetSystemRegionUpperBound(PVOID pSystemRegionUpperBound);
+
+PVOID WINAPI DetourGetEntryPoint(HMODULE hModule);
+ULONG WINAPI DetourGetModuleSize(HMODULE hModule);
+HMODULE WINAPI DetourEnumerateModules(HMODULE hModuleLast);
+ULONG WINAPI DetourGetSizeOfPayloads(HMODULE hModule);
+
+
+PVOID WINAPI DetourFindPayload(HMODULE hModule, REFGUID rguid, DWORD *pcbData);
+PVOID WINAPI DetourGetContainingModule(PVOID pvAddr);
+
+BOOL WINAPI DetourEnumerateImports(HMODULE hModule, PVOID pContext, PF_DETOUR_IMPORT_FILE_CALLBACK pfImportFile, PF_DETOUR_IMPORT_FUNC_CALLBACK pfImportFunc);
+BOOL WINAPI DetourEnumerateExports(HMODULE hModule, PVOID pContext, PF_DETOUR_ENUMERATE_EXPORT_CALLBACK pfExport);
+```
+
+## Example: Hook 系统函数
+
+比如需要hook `CreateFileW`，则在`winmm.xxx.dll`的`dllmain.cpp`中参考如下：
 
 
 ```cpp
@@ -106,20 +153,41 @@ static HANDLE WINAPI HookedCreateFileW(
     return hFile;
 }
 
-void run() {
-    HMODULE hModule = GetModuleHandle("winmm.dll");
-    if (nullptr == hModule) { // 当前dll不是被 winmm.dll 加载的，无法hook
-        return;
-    }
-    // 绑定
-    BindDllMethod(hookTransaction, hModule, "hookTransaction");
-    BindDllMethod(hook, hModule, "hook");
-    BindDllMethod(unhook, hModule, "unhook");
+BOOL APIENTRY DllMain( HMODULE hModule,
+                       DWORD  ul_reason_for_call,
+                       LPVOID lpReserved
+                     )
+{
+    switch (ul_reason_for_call)
+    {
+        case DLL_PROCESS_ATTACH: {
+            HMODULE hModule = GetModuleHandle("winmm.dll");
+            if (nullptr == hModule) { // 当前dll不是被 winmm.dll 加载的，无法hook
+                return;
+            }
+            // 绑定
+            BindDllMethod(hookTransaction, hModule, "hookTransaction");
+            BindDllMethod(hook, hModule, "hook");
+            BindDllMethod(unhook, hModule, "unhook");
 
-    hookTransaction(NULL, [](){
-        hook(&(PVOID&)RealCreateFileW, (PVOID)HookCreateFileW);
-        // ...
-    })
+            if (hookTransaction != nullptr) {
+                hookTransaction(NULL, [](){
+                    hook(&(PVOID&)RealCreateFileW, (PVOID)HookCreateFileW);
+                    // ...
+                });
+            }
+            
+        } break;
+        case DLL_PROCESS_DETACH: {
+            if (hookTransaction != nullptr) {
+                hookTransaction(NULL, [](){
+                    unhook(&(PVOID&)RealCreateFileW, (PVOID)HookCreateFileW);
+                    // ...
+                });
+            }
+        }
+        break;
+    }
 }
 
 #undef BindDllMethod // 避免影响其他模块
